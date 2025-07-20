@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    container_name: marketplace-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+      MONGO_INITDB_DATABASE: marketplace
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - marketplace-network
+
+  # Redis Cache
+  redis:
+    image: redis:7.0-alpine
+    container_name: marketplace-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - marketplace-network
+
+  # Backend API (optional - for full containerization)
+  # backend:
+  #   build: .
+  #   container_name: marketplace-backend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5000:5000"
+  #   environment:
+  #     NODE_ENV: development
+  #     PORT: 5000
+  #     MONGODB_URI: mongodb://root:rootpassword@mongodb:27017/marketplace?authSource=admin
+  #     REDIS_URL: redis://redis:6379
+  #     JWT_SECRET: your-development-jwt-secret
+  #     FRONTEND_URL: http://localhost:3000
+  #   volumes:
+  #     - .:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - mongodb
+  #     - redis
+  #   networks:
+  #     - marketplace-network
+  #   command: npm run dev
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  marketplace-network:
+    driver: bridge

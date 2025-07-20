@@ -7,32 +7,115 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header>
+    <header class="avito-header">
+    <div class="avito-container">
         <div class="logo">Marketplace</div>
-        <nav class="main-nav">
-            <input type="text" class="search-input" placeholder="Search products...">
-            <select class="category-select">
-                <option value="">All Categories</option>
-                <option value="electronics">Electronics</option>
-                <option value="books">Books</option>
-                <option value="fashion">Fashion</option>
-                <option value="other">Other</option>
+        <div class="location-select">
+            <select class="location-dropdown styled-location">
+                <option>Baku</option>
+                <option>Sumqayit</option>
+                <option>Ganja</option>
+                <option>Lenkeran</option>
+                <option>Quba</option>
+                <option>Qazax</option>
+                <option>Sheki</option>
             </select>
-        </nav>
-        <div class="cart" id="cartBtn">
-            🛒 Cart <span class="cart-count" id="cartCount">0</span>
+        </div>        <!-- Language Switcher -->
+        <div class="lang-switcher">
+            <button class="lang-btn" id="langAz">AZ</button>
+            <button class="lang-btn" id="langEn">EN</button>
+            <button class="lang-btn" id="langRu">RU</button>
         </div>
-    </header>
-    <main>
-        <h2>Products</h2>
-        <div class="products" id="products"></div>
-        <div id="productModal" class="modal">
-            <div class="modal-content product-modal-content">
-                <button class="close-btn" id="closeProductModal">X</button>
-                <div id="productDetail"></div>
+        <div class="search-bar">
+            <input type="text" class="search-input" placeholder="Search" data-i18n="searchPlaceholder">
+            <button class="search-btn" data-i18n="searchBtn">Search</button>
+        </div>
+        <button id="openPostModal" class="post-btn" data-i18n="postBtn">Post</button>
+        <button class="favorites-btn" id="favoritesBtn" title="View favorites">❤️</button>
+        <!-- User Profile Section -->
+        <div class="user-profile" id="userProfile" style="display: none;">
+            <img class="user-avatar" id="userAvatar" src="media/user.png" alt="User">
+            <span class="user-name" id="userName">User</span>
+            <div class="user-dropdown" id="userDropdown">
+                <a href="#" id="viewProfile">My Profile</a>
+                <a href="#" id="myListings">My Listings</a>
+                <a href="#" id="myOrders">Order History</a>
+                <a href="#" id="accountSettings">Settings</a>
+                <hr>
+                <a href="#" id="logoutBtn">Logout</a>
             </div>
         </div>
-    </main>
+        <button class="auth-trigger-btn" id="authTriggerBtn">Sign In</button>
+        <div class="cart" id="cartBtn">
+            🛒 <span class="cart-count" id="cartCount">0</span>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="avito-container">
+        <!-- Category Tiles Section -->
+        <div class="category-tiles">
+            <div class="category-tile" data-category="electronics" data-i18n-tile="electronics">
+                <img src="/media/responsive.png" alt="Electronics">
+                <span>Elektronika</span>
+            </div>
+            <div class="category-tile" data-category="books" data-i18n-tile="books">
+                <img src="media/book.png" alt="Books">
+                <span>Kitablar</span>
+            </div>
+            <div class="category-tile" data-category="clothing" data-i18n-tile="clothing">
+                <img src="/media/tshirt.png" alt="Clothing">
+                <span>Geyim</span>
+            </div>
+            <div class="category-tile" data-category="home" data-i18n-tile="home">
+                <img src="/media/home.png" alt="Home">
+                <span>Ev və bağ</span>
+            </div>
+            <div class="category-tile" data-category="services" data-i18n-tile="services">
+                <img src="/media/support.png" alt="Services">
+                <span>Xidmətlər</span>
+            </div>
+            <div class="category-tile" data-category="transport" data-i18n-tile="transport">
+                <img src="/media/truck.png" alt="Transport">
+                <span>Nəqliyyat</span>
+            </div>
+            <div class="category-tile" data-category="sports" data-i18n-tile="sports">
+                <img src="/media/sports.png" alt="Sports">
+                <span>İdman və hobbi</span>
+            </div>
+            <div class="category-tile" data-category="personal" data-i18n-tile="personal">
+                <img src="/media/prohibited.png" alt="Personal">
+                <span>Şəxsi əşyalar</span>
+            </div>
+            <div class="category-tile" data-category="animals" data-i18n-tile="animals">
+                <img src="/media/paw.png" alt="Animals">
+                <span>Heyvanlar</span>
+            </div>
+            <div class="category-tile" data-category="medicine" data-i18n-tile="medicine">
+                <img src="/media/medicine.png" alt="Medicine">
+                <span>Tibbi Məhsullar</span>
+            </div>
+        </div>
+        <!-- End Category Tiles -->
+        <div style="margin: 1.5em 0 0.5em 0; text-align: right;">
+            <select class="category-select" style="padding: 0.4em 1em; border-radius: 6px; border: 1px solid #ddd; font-size: 1em;">
+                <option value="" data-i18n-option="all">Bütün kateqoriyalar</option>
+                <option value="electronics" data-i18n-option="electronics">Elektronika</option>
+                <option value="books" data-i18n-option="books">Kitablar</option>
+                <option value="clothing" data-i18n-option="clothing">Geyim</option>
+                <option value="home" data-i18n-option="home">Ev və bağ</option>
+                <option value="services" data-i18n-option="services">Xidmətlər</option>
+                <option value="transport" data-i18n-option="transport">Nəqliyyat</option>
+                <option value="sports" data-i18n-option="sports">İdman və hobbi</option>
+                <option value="personal" data-i18n-option="personal">Şəxsi əşyalar</option>
+                <option value="animals" data-i18n-option="animals">Heyvanlar</option>
+                <option value="medicine" data-i18n-option="medicine">Tibbi Məhsullar</option>
+            </select>
+        </div>
+        <div class="products" id="products"></div>
+        <!-- Product and Post modals remain as before -->
+    </div>
+</main>
     <div class="modal" id="cartModal">
         <div class="modal-content">
             <button class="close-btn" id="closeModal">X</button>
@@ -41,19 +124,147 @@
             <div><strong>Total: $<span id="cartTotal">0.00</span></strong></div>
             <button class="checkout-btn" id="checkoutBtn">Checkout</button>
         </div>
-    </div>
-    <div class="modal" id="authModal">
+    </div>    <div class="modal" id="authModal">
         <div class="modal-content auth-modal-content">
             <button class="close-btn" id="closeAuthModal">X</button>
-            <h3>Sign In / Register</h3>
-            <form id="authForm">
-                <input type="email" id="authEmail" placeholder="Email" required class="auth-input">
-                <input type="password" id="authPassword" placeholder="Password" required class="auth-input">
+            <h3 id="authTitle">Sign In</h3>
+            
+            <!-- Sign In Form -->
+            <form id="signInForm" class="auth-form">
+                <input type="email" id="signInEmail" placeholder="Email" required class="auth-input">
+                <input type="password" id="signInPassword" placeholder="Password" required class="auth-input">
                 <button type="submit" class="auth-btn">Sign In</button>
                 <div class="auth-switch">Don't have an account? <a href="#" id="switchToRegister">Register</a></div>
             </form>
+            
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form" style="display: none;">
+                <input type="text" id="registerName" placeholder="Full Name" required class="auth-input">
+                <input type="email" id="registerEmail" placeholder="Email" required class="auth-input">
+                <input type="tel" id="registerPhone" placeholder="Phone Number" class="auth-input">
+                <input type="password" id="registerPassword" placeholder="Password" required class="auth-input">
+                <input type="password" id="confirmPassword" placeholder="Confirm Password" required class="auth-input">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="agreeTerms" required>
+                    <label for="agreeTerms">I agree to the Terms of Service and Privacy Policy</label>
+                </div>
+                <button type="submit" class="auth-btn">Create Account</button>
+                <div class="auth-switch">Already have an account? <a href="#" id="switchToSignIn">Sign In</a></div>
+            </form>
         </div>
     </div>
+    <div id="productModal" class="modal">
+        <div class="modal-content product-modal-content">
+            <button class="close-btn" id="closeProductModal">X</button>
+            <div id="productDetail"></div>
+        </div>
+    </div>
+    <!-- Post Product Modal -->
+    <div class="modal" id="postModal">
+        <div class="modal-content post-modal-content">
+            <button class="close-btn" id="closePostModal">X</button>
+            <h3>Post</h3>
+            <form id="postForm">
+                <input type="text" id="postTitle" placeholder="Title" required class="auth-input">
+                <input type="number" id="postPrice" placeholder="Price" required class="auth-input" min="0" step="0.01">
+                <textarea id="postDesc" placeholder="Description" required class="auth-input"></textarea>
+                <input type="text" id="postTags" placeholder="Tags (comma separated)" class="auth-input">
+                <input type="text" id="postCategory" placeholder="Category" class="auth-input">
+                <input type="number" id="postStock" placeholder="Stock" required class="auth-input" min="1">
+                <input type="text" id="postLocation" placeholder="Location" class="auth-input">
+                <input type="text" id="postSeller" placeholder="Seller Name" class="auth-input">
+                <input type="text" id="postImage" placeholder="Image URL" class="auth-input">
+                <button type="submit" class="auth-btn">Post Product</button>
+            </form>
+        </div>
+    </div>    <div class="modal" id="favoritesModal">
+        <div class="modal-content">
+            <button class="close-btn" id="closeFavoritesModal">X</button>
+            <h3 data-i18n="favoritesTitle">Favorites</h3>
+            <div class="favorites-list" id="favoritesList"></div>
+        </div>
+    </div>
+    
+    <!-- User Profile Modal -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content profile-modal-content">
+            <button class="close-btn" id="closeProfileModal">X</button>
+            <h3>My Profile</h3>
+            <div class="profile-content">                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <img id="profileAvatar" src="media/user.png" alt="Profile">
+                        <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+                        <button class="change-avatar-btn" id="changeAvatarBtn">Change Photo</button>
+                    </div>
+                    <div class="profile-info">
+                        <h4 id="profileName">User Name</h4>
+                        <p id="profileEmail">user@example.com</p>
+                        <div class="profile-stats">
+                            <span class="stat">
+                                <strong id="listingsCount">0</strong>
+                                <small>Listings</small>
+                            </span>
+                            <span class="stat">
+                                <strong id="ratingsCount">0</strong>
+                                <small>Reviews</small>
+                            </span>
+                            <span class="stat">
+                                <strong id="memberSince">2025</strong>
+                                <small>Member Since</small>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-tabs">
+                    <button class="tab-btn active" data-tab="info">Personal Info</button>
+                    <button class="tab-btn" data-tab="listings">My Listings</button>
+                    <button class="tab-btn" data-tab="reviews">Reviews</button>
+                </div>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="info-tab">
+                        <form id="profileForm">
+                            <div class="form-group">
+                                <label>Full Name</label>
+                                <input type="text" id="editName" class="auth-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" id="editEmail" class="auth-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Phone</label>
+                                <input type="tel" id="editPhone" class="auth-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Location</label>
+                                <select id="editLocation" class="auth-input">
+                                    <option>Baku</option>
+                                    <option>Sumqayit</option>
+                                    <option>Ganja</option>
+                                    <option>Lenkeran</option>
+                                    <option>Quba</option>
+                                    <option>Qazax</option>
+                                    <option>Sheki</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="auth-btn">Update Profile</button>
+                        </form>
+                    </div>
+                    <div class="tab-pane" id="listings-tab">
+                        <div id="userListings">
+                            <p>Your listings will appear here...</p>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="reviews-tab">
+                        <div id="userReviews">
+                            <p>Reviews from buyers will appear here...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script src="index.js"></script>
 </body>
 </html>
