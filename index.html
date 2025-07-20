@@ -197,47 +197,47 @@
                         <button class="change-avatar-btn" id="changeAvatarBtn">Change Photo</button>
                     </div>
                     <div class="profile-info">
-                        <h4 id="profileName">User Name</h4>
-                        <p id="profileEmail">user@example.com</p>
-                        <div class="profile-stats">
-                            <span class="stat">
-                                <strong id="listingsCount">0</strong>
+                        <h4 id="profileName" tabindex="0" aria-label="User Name">User Name</h4>
+                        <p id="profileEmail" tabindex="0" aria-label="Email">user@example.com</p>
+                        <div class="profile-stats" role="list" aria-label="Profile Statistics">
+                            <span class="stat" role="listitem">
+                                <strong id="listingsCount" aria-label="Listings Count">0</strong>
                                 <small>Listings</small>
                             </span>
-                            <span class="stat">
-                                <strong id="ratingsCount">0</strong>
+                            <span class="stat" role="listitem">
+                                <strong id="ratingsCount" aria-label="Reviews Count">0</strong>
                                 <small>Reviews</small>
                             </span>
-                            <span class="stat">
-                                <strong id="memberSince">2025</strong>
+                            <span class="stat" role="listitem">
+                                <strong id="memberSince" aria-label="Member Since">2025</strong>
                                 <small>Member Since</small>
                             </span>
                         </div>
                     </div>
                 </div>
                 <div class="profile-tabs">
-                    <button class="tab-btn active" data-tab="info">Personal Info</button>
-                    <button class="tab-btn" data-tab="listings">My Listings</button>
-                    <button class="tab-btn" data-tab="reviews">Reviews</button>
+                    <button class="tab-btn active" data-tab="info" aria-controls="info-tab" aria-selected="true">Personal Info</button>
+                    <button class="tab-btn" data-tab="listings" aria-controls="listings-tab" aria-selected="false">My Listings</button>
+                    <button class="tab-btn" data-tab="reviews" aria-controls="reviews-tab" aria-selected="false">Reviews</button>
                 </div>
                 <div class="tab-content">
                     <div class="tab-pane active" id="info-tab">
                         <form id="profileForm">
                             <div class="form-group">
-                                <label>Full Name</label>
-                                <input type="text" id="editName" class="auth-input">
+                                <label for="editName">Full Name</label>
+                                <input type="text" id="editName" class="auth-input" aria-required="true" autocomplete="name">
                             </div>
                             <div class="form-group">
-                                <label>Email</label>
-                                <input type="email" id="editEmail" class="auth-input">
+                                <label for="editEmail">Email</label>
+                                <input type="email" id="editEmail" class="auth-input" aria-required="true" autocomplete="email">
                             </div>
                             <div class="form-group">
-                                <label>Phone</label>
-                                <input type="tel" id="editPhone" class="auth-input">
+                                <label for="editPhone">Phone</label>
+                                <input type="tel" id="editPhone" class="auth-input" autocomplete="tel">
                             </div>
                             <div class="form-group">
-                                <label>Location</label>
-                                <select id="editLocation" class="auth-input">
+                                <label for="editLocation">Location</label>
+                                <select id="editLocation" class="auth-input" aria-required="true">
                                     <option>Baku</option>
                                     <option>Sumqayit</option>
                                     <option>Ganja</option>
