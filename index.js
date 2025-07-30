@@ -348,7 +348,6 @@ function showProductDetail(id) {
         ${videoHtml}
         <button onclick="addToCart(${product.id})" ${product.stock === 0 ? 'disabled' : ''}>Add to Cart</button>
         <button class="view-comments-btn" onclick="showComments(${product.id})">View Comments</button>
-        <button class="contact-btn" style="background:var(--primary-blue);color:#fff;margin-top:0.7rem;">Contact Seller</button>
         <div id="commentsSection"></div>
     `;
     document.getElementById('productModal').classList.add('active');
