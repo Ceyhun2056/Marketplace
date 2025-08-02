@@ -157,11 +157,20 @@ let cart = [];
 
 // SEARCH FUNCTIONALITY
 const searchInput = document.querySelector('.search-input');
+const searchBtn = document.querySelector('.search-btn');
 const categorySelect = document.querySelector('.category-select');
 let filteredProducts = [...products];
 
 searchInput.addEventListener('input', filterAndRenderProducts);
+searchInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        filterAndRenderProducts();
+    }
+});
 categorySelect.addEventListener('change', filterAndRenderProducts);
+if (searchBtn) {
+    searchBtn.addEventListener('click', filterAndRenderProducts);
+}
 
 function filterAndRenderProducts() {
     const search = searchInput.value.toLowerCase();
@@ -185,14 +194,36 @@ if (closePostModal) closePostModal.onclick = () => postModal.classList.remove('a
 if (postForm) {
     postForm.onsubmit = function(e) {
         e.preventDefault();
+        
+        // Validate required fields
+        const title = document.getElementById('postTitle').value.trim();
+        const price = document.getElementById('postPrice').value;
+        const desc = document.getElementById('postDesc').value.trim();
+        const stock = document.getElementById('postStock').value;
+        
+        if (!title || !price || !desc || !stock) {
+            authSystem.showNotification('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        if (parseFloat(price) <= 0) {
+            authSystem.showNotification('Price must be greater than 0', 'error');
+            return;
+        }
+        
+        if (parseInt(stock) <= 0) {
+            authSystem.showNotification('Stock must be greater than 0', 'error');
+            return;
+        }
+        
         const newProduct = {
             id: Date.now(),
-            title: document.getElementById('postTitle').value,
-            price: parseFloat(document.getElementById('postPrice').value),
-            desc: document.getElementById('postDesc').value,
+            title: title,
+            price: parseFloat(price),
+            desc: desc,
             tags: document.getElementById('postTags').value.split(',').map(t => t.trim()).filter(Boolean),
             category: document.getElementById('postCategory').value || 'other',
-            stock: parseInt(document.getElementById('postStock').value, 10),
+            stock: parseInt(stock, 10),
             location: document.getElementById('postLocation').value || 'Baku',
             seller: document.getElementById('postSeller').value || 'Unknown',
             postedAt: Date.now(),
@@ -204,6 +235,7 @@ if (postForm) {
         filterAndRenderProducts();
         postModal.classList.remove('active');
         postForm.reset();
+        authSystem.showNotification('Product posted successfully!', 'success');
     };
 }
 
@@ -240,10 +272,15 @@ function isFavorite(id) {
 
 function toggleFavorite(id, event) {
     event.stopPropagation();
+    const product = products.find(p => p.id === id);
+    const productName = product ? product.title : 'Product';
+    
     if (isFavorite(id)) {
         favorites = favorites.filter(favId => favId !== id);
+        authSystem.showNotification(`${productName} removed from favorites`, 'info');
     } else {
         favorites.push(id);
+        authSystem.showNotification(`${productName} added to favorites`, 'success');
     }
     localStorage.setItem('favorites', JSON.stringify(favorites));
     renderProducts();
@@ -253,14 +290,27 @@ function toggleFavorite(id, event) {
 function addToCart(id) {
     const product = products.find(p => p.id === id);
     if (!product) return;
+    
+    // Check if product is in stock
+    if (product.stock <= 0) {
+        authSystem.showNotification('This product is out of stock!', 'error');
+        return;
+    }
+    
     const item = cart.find(i => i.id === id);
     if (item) {
+        // Check if adding one more would exceed available stock
+        if (item.qty >= product.stock) {
+            authSystem.showNotification(`Only ${product.stock} items available in stock!`, 'error');
+            return;
+        }
         item.qty += 1;
     } else {
         cart.push({ id: product.id, name: product.title, price: product.price, qty: 1 });
     }
     updateCartCount();
     renderCart();
+    authSystem.showNotification(`${product.title} added to cart!`, 'success');
 }
 
 // Remove one from cart
@@ -293,7 +343,21 @@ function renderCart() {
     const cartItemsDiv = document.getElementById('cartItems');
     cartItemsDiv.innerHTML = '';
     let total = 0;
+    
+    // Clean up cart - remove items that exceed available stock or are out of stock
+    cart = cart.filter(item => {
+        const product = products.find(p => p.id === item.id);
+        if (!product || product.stock <= 0) {
+            return false; // Remove item if product doesn't exist or is out of stock
+        }
+        if (item.qty > product.stock) {
+            item.qty = product.stock; // Adjust quantity to available stock
+        }
+        return true;
+    });
+    
     cart.forEach(item => {
+        const product = products.find(p => p.id === item.id);
         total += item.price * item.qty;
         const div = document.createElement('div');
         div.className = 'cart-item';
@@ -302,6 +366,7 @@ function renderCart() {
             <span>$${(item.price * item.qty).toFixed(2)}</span>
             <button onclick="removeOneFromCart(${item.id})">–</button>
             <button onclick="removeFromCart(${item.id})">🗑</button>
+            ${product && item.qty >= product.stock ? '<small style="color: red;">Max available</small>' : ''}
         `;
         cartItemsDiv.appendChild(div);
     });
@@ -397,13 +462,43 @@ document.getElementById('closeModal').onclick = function() {
 };
 document.getElementById('checkoutBtn').onclick = function() {
     if (cart.length === 0) {
-        alert('Your cart is empty!');
+        authSystem.showNotification('Your cart is empty!', 'error');
         return;
     }
-    alert('Thank you for your purchase!');
+    
+    // Validate stock availability before checkout
+    const invalidItems = [];
+    cart.forEach(cartItem => {
+        const product = products.find(p => p.id === cartItem.id);
+        if (!product || product.stock < cartItem.qty) {
+            invalidItems.push(cartItem.name);
+        }
+    });
+    
+    if (invalidItems.length > 0) {
+        authSystem.showNotification(`Insufficient stock for: ${invalidItems.join(', ')}`, 'error');
+        renderCart(); // Update cart to reflect current stock
+        return;
+    }
+    
+    // Reduce stock for each purchased item
+    cart.forEach(cartItem => {
+        const product = products.find(p => p.id === cartItem.id);
+        if (product) {
+            product.stock -= cartItem.qty;
+            // Ensure stock doesn't go below 0
+            if (product.stock < 0) product.stock = 0;
+        }
+    });
+    
+    const itemCount = cart.reduce((sum, item) => sum + item.qty, 0);
+    const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    
+    authSystem.showNotification(`Order confirmed! ${itemCount} items purchased for $${totalAmount.toFixed(2)}`, 'success');
     cart = [];
     updateCartCount();
     renderCart();
+    renderProducts(); // Re-render products to show updated stock
     document.getElementById('cartModal').classList.remove('active');
 };
 
@@ -1048,6 +1143,27 @@ class AuthSystem {
 
 // Initialize authentication system
 const authSystem = new AuthSystem();
+
+// Modal backdrop closing functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    });
+    
+    // Escape key to close modals
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            modals.forEach(modal => {
+                modal.classList.remove('active');
+            });
+        }
+    });
+});
 
 // Expose functions globally for HTML event handlers
 window.removeOneFromCart = removeOneFromCart;
