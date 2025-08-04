@@ -773,8 +773,14 @@ class AuthSystem {
         // Check if user is already logged in
         const savedUser = localStorage.getItem('marketplace_current_user');
         if (savedUser) {
-            this.currentUser = JSON.parse(savedUser);
-            this.updateUI();
+            try {
+                this.currentUser = JSON.parse(savedUser);
+                this.updateUI();
+            } catch (e) {
+                console.error('Error parsing user data:', e);
+                localStorage.removeItem('marketplace_current_user');
+                this.currentUser = null;
+            }
         }
 
         // Event listeners
@@ -966,14 +972,20 @@ class AuthSystem {
     }    updateUI() {
         const authBtn = document.getElementById('authTriggerBtn');
         const userProfile = document.getElementById('userProfile');
+        const userAvatar = document.getElementById('userAvatar');
 
         if (this.currentUser) {
             authBtn.style.display = 'none';
             userProfile.style.display = 'flex';
             
+            // Make sure avatar path is valid
             const avatar = this.currentUser.avatar || 'media/user.png';
-            document.getElementById('userAvatar').src = avatar;
-            document.getElementById('userName').textContent = this.currentUser.name;
+            
+            // Update avatar and username
+            if (userAvatar) userAvatar.src = avatar;
+            
+            const userName = document.getElementById('userName');
+            if (userName) userName.textContent = this.currentUser.name;
         } else {
             authBtn.style.display = 'block';
             userProfile.style.display = 'none';
@@ -1512,26 +1524,29 @@ class AuthSystem {
         // Create FileReader to convert image to base64
         const reader = new FileReader();
         reader.onload = (e) => {
-            const base64Image = e.target.result;
-            
-            // Update user avatar
-            if (this.currentUser) {
-                this.currentUser.avatar = base64Image;
-                
-                // Update in users array
-                const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
-                if (userIndex !== -1) {
-                    this.users[userIndex] = this.currentUser;
-                    localStorage.setItem('marketplace_users', JSON.stringify(this.users));
-                }
+            // Compress image before storing it
+            this.compressImage(e.target.result, (compressedImage) => {
+                // Update user avatar
+                if (this.currentUser) {
+                    this.currentUser.avatar = compressedImage;
+                    
+                    // Update in users array
+                    const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
+                    if (userIndex !== -1) {
+                        this.users[userIndex] = this.currentUser;
+                        localStorage.setItem('marketplace_users', JSON.stringify(this.users));
+                    }
 
-                localStorage.setItem('marketplace_current_user', JSON.stringify(this.currentUser));
-                
-                // Update UI
-                this.updateUI();
-                this.populateProfileForm();
-                this.showNotification('Profile photo updated successfully!', 'success');
-            }
+                    localStorage.setItem('marketplace_current_user', JSON.stringify(this.currentUser));
+                    
+                    // Update UI
+                    document.getElementById('userAvatar').src = compressedImage;
+                    document.getElementById('profileAvatar').src = compressedImage;
+                    this.updateUI();
+                    this.populateProfileForm();
+                    this.showNotification('Profile photo updated successfully!', 'success');
+                }
+            });
         };
 
         reader.onerror = () => {
@@ -1539,6 +1554,42 @@ class AuthSystem {
         };
 
         reader.readAsDataURL(file);
+    }
+    
+    // Helper method to compress images
+    compressImage(base64Image, callback, maxWidth = 300, maxHeight = 300) {
+        const img = new Image();
+        img.src = base64Image;
+        img.onload = function() {
+            // Calculate new dimensions
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > height) {
+                if (width > maxWidth) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                }
+            } else {
+                if (height > maxHeight) {
+                    width *= maxHeight / height;
+                    height = maxHeight;
+                }
+            }
+            
+            // Create canvas for compression
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Draw and compress
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Get compressed image
+            const compressedImage = canvas.toDataURL('image/jpeg', 0.8);
+            callback(compressedImage);
+        };
     }
 }
 
