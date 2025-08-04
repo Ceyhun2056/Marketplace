@@ -195,6 +195,13 @@ if (postForm) {
     postForm.onsubmit = function(e) {
         e.preventDefault();
         
+        // Check if user is logged in
+        if (!authSystem.isAuthenticated()) {
+            authSystem.showNotification('Please sign in to post a product', 'error');
+            authSystem.showAuthModal();
+            return;
+        }
+        
         // Validate required fields
         const title = document.getElementById('postTitle').value.trim();
         const price = document.getElementById('postPrice').value;
@@ -216,6 +223,7 @@ if (postForm) {
             return;
         }
         
+        const currentUser = authSystem.getCurrentUser();
         const newProduct = {
             id: Date.now(),
             title: title,
@@ -224,14 +232,19 @@ if (postForm) {
             tags: document.getElementById('postTags').value.split(',').map(t => t.trim()).filter(Boolean),
             category: document.getElementById('postCategory').value || 'other',
             stock: parseInt(stock, 10),
-            location: document.getElementById('postLocation').value || 'Baku',
-            seller: document.getElementById('postSeller').value || 'Unknown',
+            location: document.getElementById('postLocation').value || currentUser.location || 'Baku',
+            seller: currentUser.name || 'Unknown',
+            sellerId: currentUser.id,
             postedAt: Date.now(),
             variants: [],
             images: [document.getElementById('postImage').value || 'media/default.png'],
             video: ''
         };
         products.push(newProduct);
+        
+        // Add to user's listings
+        authSystem.addListing(newProduct);
+        
         filterAndRenderProducts();
         postModal.classList.remove('active');
         postForm.reset();
@@ -466,6 +479,13 @@ document.getElementById('checkoutBtn').onclick = function() {
         return;
     }
     
+    // Check if user is logged in
+    if (!authSystem.isAuthenticated()) {
+        authSystem.showNotification('Please sign in to complete your purchase', 'error');
+        authSystem.showAuthModal();
+        return;
+    }
+    
     // Validate stock availability before checkout
     const invalidItems = [];
     cart.forEach(cartItem => {
@@ -481,6 +501,20 @@ document.getElementById('checkoutBtn').onclick = function() {
         return;
     }
     
+    // Create order object
+    const order = {
+        id: Date.now(),
+        userId: authSystem.getCurrentUser().id,
+        items: cart.map(item => ({...item})), // Copy cart items
+        totalAmount: cart.reduce((sum, item) => sum + (item.price * item.qty), 0),
+        orderDate: new Date().toISOString(),
+        status: 'completed',
+        shippingAddress: authSystem.getCurrentUser().location || 'Baku'
+    };
+    
+    // Save order to user's order history
+    authSystem.addOrder(order);
+    
     // Reduce stock for each purchased item
     cart.forEach(cartItem => {
         const product = products.find(p => p.id === cartItem.id);
@@ -494,7 +528,7 @@ document.getElementById('checkoutBtn').onclick = function() {
     const itemCount = cart.reduce((sum, item) => sum + item.qty, 0);
     const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
     
-    authSystem.showNotification(`Order confirmed! ${itemCount} items purchased for $${totalAmount.toFixed(2)}`, 'success');
+    authSystem.showNotification(`Order #${order.id} confirmed! ${itemCount} items purchased for $${totalAmount.toFixed(2)}`, 'success');
     cart = [];
     updateCartCount();
     renderCart();
@@ -787,6 +821,22 @@ class AuthSystem {
         document.getElementById('viewProfile').addEventListener('click', (e) => {
             e.preventDefault();
             this.showProfileModal();
+        });
+
+        document.getElementById('myListings').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showProfileModal();
+            this.switchTab('listings');
+        });
+
+        document.getElementById('myOrders').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showOrderHistory();
+        });
+
+        document.getElementById('accountSettings').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showSettingsModal();
         });
 
         document.getElementById('logoutBtn').addEventListener('click', (e) => {
@@ -1092,6 +1142,357 @@ class AuthSystem {
         return this.currentUser;
     }
 
+    // Add order to user's order history
+    addOrder(order) {
+        if (!this.currentUser) return;
+
+        // Initialize orders array if it doesn't exist
+        if (!this.currentUser.orders) {
+            this.currentUser.orders = [];
+        }
+
+        this.currentUser.orders.push(order);
+
+        // Update in users array
+        const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
+        if (userIndex !== -1) {
+            this.users[userIndex] = this.currentUser;
+            localStorage.setItem('marketplace_users', JSON.stringify(this.users));
+        }
+
+        localStorage.setItem('marketplace_current_user', JSON.stringify(this.currentUser));
+    }
+
+    // Add listing to user's listings
+    addListing(product) {
+        if (!this.currentUser) return;
+
+        // Initialize listings array if it doesn't exist
+        if (!this.currentUser.listings) {
+            this.currentUser.listings = [];
+        }
+
+        const listing = {
+            id: product.id,
+            title: product.title,
+            price: product.price,
+            category: product.category,
+            image: product.images[0],
+            active: true,
+            postedAt: product.postedAt
+        };
+
+        this.currentUser.listings.push(listing);
+
+        // Update in users array
+        const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
+        if (userIndex !== -1) {
+            this.users[userIndex] = this.currentUser;
+            localStorage.setItem('marketplace_users', JSON.stringify(this.users));
+        }
+
+        localStorage.setItem('marketplace_current_user', JSON.stringify(this.currentUser));
+    }
+
+    // Get user's order history
+    getOrderHistory() {
+        if (!this.currentUser) return [];
+        return this.currentUser.orders || [];
+    }
+
+    // Show order history modal
+    showOrderHistory() {
+        // Create order history modal if it doesn't exist
+        let orderModal = document.getElementById('orderHistoryModal');
+        if (!orderModal) {
+            orderModal = document.createElement('div');
+            orderModal.id = 'orderHistoryModal';
+            orderModal.className = 'modal';
+            orderModal.innerHTML = `
+                <div class="modal-content">
+                    <button class="close-btn" onclick="document.getElementById('orderHistoryModal').classList.remove('active')">X</button>
+                    <h3>Order History</h3>
+                    <div id="orderHistoryContent"></div>
+                </div>
+            `;
+            document.body.appendChild(orderModal);
+        }
+
+        // Populate order history
+        const orders = this.getOrderHistory();
+        const content = document.getElementById('orderHistoryContent');
+        
+        if (orders.length === 0) {
+            content.innerHTML = '<p>No orders yet. <a href="#" onclick="document.getElementById(\'orderHistoryModal\').classList.remove(\'active\')">Start shopping!</a></p>';
+        } else {
+            content.innerHTML = orders.map(order => `
+                <div class="order-item" style="border: 1px solid #ddd; margin: 1rem 0; padding: 1rem; border-radius: 8px;">
+                    <div class="order-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <strong>Order #${order.id}</strong>
+                        <span class="order-status" style="background: #22c55e; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8em;">${order.status}</span>
+                    </div>
+                    <div class="order-info" style="color: #666; font-size: 0.9em; margin-bottom: 0.5rem;">
+                        <div>Date: ${new Date(order.orderDate).toLocaleDateString()}</div>
+                        <div>Total: $${order.totalAmount.toFixed(2)}</div>
+                        <div>Shipping: ${order.shippingAddress}</div>
+                    </div>
+                    <div class="order-items">
+                        <strong>Items:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                            ${order.items.map(item => `
+                                <li>${item.name} (x${item.qty}) - $${(item.price * item.qty).toFixed(2)}</li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `).reverse().join('');
+        }
+
+        orderModal.classList.add('active');
+        this.hideUserDropdown();
+    }
+
+    // Show settings modal
+    showSettingsModal() {
+        // Create settings modal if it doesn't exist
+        let settingsModal = document.getElementById('settingsModal');
+        if (!settingsModal) {
+            settingsModal = document.createElement('div');
+            settingsModal.id = 'settingsModal';
+            settingsModal.className = 'modal';
+            settingsModal.innerHTML = `
+                <div class="modal-content settings-modal-content">
+                    <button class="close-btn" onclick="document.getElementById('settingsModal').classList.remove('active')">X</button>
+                    <h3>Account Settings</h3>
+                    <div class="settings-content">
+                        <div class="settings-section">
+                            <h4>Privacy & Security</h4>
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <input type="checkbox" id="emailNotifications" checked> 
+                                    Email notifications
+                                </label>
+                                <small>Receive updates about your orders and listings</small>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <input type="checkbox" id="profileVisibility" checked> 
+                                    Public profile
+                                </label>
+                                <small>Allow other users to see your profile information</small>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <input type="checkbox" id="showOnlineStatus"> 
+                                    Show online status
+                                </label>
+                                <small>Let others know when you're online</small>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h4>Preferences</h4>
+                            <div class="setting-item">
+                                <label for="defaultLanguage">Default Language:</label>
+                                <select id="defaultLanguage" class="settings-select">
+                                    <option value="en">English</option>
+                                    <option value="az">Azerbaijani</option>
+                                    <option value="ru">Russian</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label for="defaultLocation">Default Location:</label>
+                                <select id="defaultLocation" class="settings-select">
+                                    <option value="Baku">Baku</option>
+                                    <option value="Sumqayit">Sumqayit</option>
+                                    <option value="Ganja">Ganja</option>
+                                    <option value="Lenkeran">Lenkeran</option>
+                                    <option value="Quba">Quba</option>
+                                    <option value="Qazax">Qazax</option>
+                                    <option value="Sheki">Sheki</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <input type="checkbox" id="darkMode"> 
+                                    Dark mode
+                                </label>
+                                <small>Use dark theme for the interface</small>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h4>Account</h4>
+                            <div class="setting-item">
+                                <button class="settings-btn danger" onclick="authSystem.changePassword()">Change Password</button>
+                                <small>Update your account password</small>
+                            </div>
+                            <div class="setting-item">
+                                <button class="settings-btn danger" onclick="authSystem.deleteAccount()">Delete Account</button>
+                                <small>Permanently delete your account and all data</small>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-actions">
+                            <button class="settings-btn primary" onclick="authSystem.saveSettings()">Save Changes</button>
+                            <button class="settings-btn secondary" onclick="document.getElementById('settingsModal').classList.remove('active')">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(settingsModal);
+        }
+
+        // Load current settings
+        this.loadCurrentSettings();
+        
+        settingsModal.classList.add('active');
+        this.hideUserDropdown();
+    }
+
+    // Load current user settings into the modal
+    loadCurrentSettings() {
+        if (!this.currentUser) return;
+
+        // Load preferences from localStorage or user object
+        const savedLang = localStorage.getItem('lang') || 'en';
+        const defaultLocation = this.currentUser.location || 'Baku';
+        const isDarkMode = localStorage.getItem('darkMode') === '1';
+        
+        // Set values in the form
+        const langSelect = document.getElementById('defaultLanguage');
+        const locationSelect = document.getElementById('defaultLocation');
+        const darkModeCheckbox = document.getElementById('darkMode');
+        
+        if (langSelect) langSelect.value = savedLang;
+        if (locationSelect) locationSelect.value = defaultLocation;
+        if (darkModeCheckbox) darkModeCheckbox.checked = isDarkMode;
+        
+        // Load user preferences from user object (if stored)
+        if (this.currentUser.settings) {
+            const settings = this.currentUser.settings;
+            const emailNotif = document.getElementById('emailNotifications');
+            const profileVis = document.getElementById('profileVisibility');
+            const onlineStatus = document.getElementById('showOnlineStatus');
+            
+            if (emailNotif) emailNotif.checked = settings.emailNotifications !== false;
+            if (profileVis) profileVis.checked = settings.profileVisibility !== false;
+            if (onlineStatus) onlineStatus.checked = settings.showOnlineStatus === true;
+        }
+    }
+
+    // Save settings
+    saveSettings() {
+        if (!this.currentUser) return;
+
+        // Get form values
+        const emailNotifications = document.getElementById('emailNotifications')?.checked;
+        const profileVisibility = document.getElementById('profileVisibility')?.checked;
+        const showOnlineStatus = document.getElementById('showOnlineStatus')?.checked;
+        const defaultLanguage = document.getElementById('defaultLanguage')?.value;
+        const defaultLocation = document.getElementById('defaultLocation')?.value;
+        const darkMode = document.getElementById('darkMode')?.checked;
+
+        // Save to user object
+        if (!this.currentUser.settings) {
+            this.currentUser.settings = {};
+        }
+        
+        this.currentUser.settings = {
+            emailNotifications,
+            profileVisibility,
+            showOnlineStatus
+        };
+
+        // Update user location
+        this.currentUser.location = defaultLocation;
+
+        // Save app preferences to localStorage
+        localStorage.setItem('lang', defaultLanguage);
+        localStorage.setItem('darkMode', darkMode ? '1' : '0');
+
+        // Apply dark mode immediately
+        if (darkMode) {
+            document.body.classList.add('dark-mode');
+            const darkModeBtn = document.getElementById('darkModeBtn');
+            if (darkModeBtn) darkModeBtn.classList.add('active');
+        } else {
+            document.body.classList.remove('dark-mode');
+            const darkModeBtn = document.getElementById('darkModeBtn');
+            if (darkModeBtn) darkModeBtn.classList.remove('active');
+        }
+
+        // Apply language change
+        setLanguage(defaultLanguage);
+
+        // Update user in storage
+        const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
+        if (userIndex !== -1) {
+            this.users[userIndex] = this.currentUser;
+            localStorage.setItem('marketplace_users', JSON.stringify(this.users));
+        }
+        localStorage.setItem('marketplace_current_user', JSON.stringify(this.currentUser));
+
+        // Close modal and show success
+        document.getElementById('settingsModal').classList.remove('active');
+        this.showNotification('Settings saved successfully!', 'success');
+    }
+
+    // Change password function
+    changePassword() {
+        const newPassword = prompt('Enter new password:');
+        if (newPassword && newPassword.trim().length >= 6) {
+            this.currentUser.password = newPassword.trim();
+            
+            // Update in users array
+            const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
+            if (userIndex !== -1) {
+                this.users[userIndex] = this.currentUser;
+                localStorage.setItem('marketplace_users', JSON.stringify(this.users));
+            }
+            localStorage.setItem('marketplace_current_user', JSON.stringify(this.currentUser));
+            
+            this.showNotification('Password changed successfully!', 'success');
+        } else if (newPassword !== null) {
+            this.showNotification('Password must be at least 6 characters long', 'error');
+        }
+    }
+
+    // Delete account function
+    deleteAccount() {
+        const confirmation = confirm('Are you sure you want to delete your account? This action cannot be undone.');
+        if (confirmation) {
+            const doubleConfirmation = prompt('Type "DELETE" to confirm account deletion:');
+            if (doubleConfirmation === 'DELETE') {
+                // Remove user from users array
+                this.users = this.users.filter(u => u.id !== this.currentUser.id);
+                localStorage.setItem('marketplace_users', JSON.stringify(this.users));
+                
+                // Remove user products
+                const userProducts = products.filter(p => p.sellerId === this.currentUser.id);
+                userProducts.forEach(product => {
+                    const productIndex = products.findIndex(p => p.id === product.id);
+                    if (productIndex !== -1) {
+                        products.splice(productIndex, 1);
+                    }
+                });
+                
+                // Logout and clear data
+                localStorage.removeItem('marketplace_current_user');
+                this.currentUser = null;
+                this.updateUI();
+                
+                // Close modal and refresh products
+                document.getElementById('settingsModal').classList.remove('active');
+                filterAndRenderProducts();
+                
+                this.showNotification('Account deleted successfully', 'info');
+            } else if (doubleConfirmation !== null) {
+                this.showNotification('Account deletion cancelled - confirmation text did not match', 'error');
+            }
+        }
+    }
+
     handleAvatarChange(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -1171,6 +1572,39 @@ window.removeFromCart = removeFromCart;
 window.addToCart = addToCart;
 window.showProductDetail = showProductDetail;
 window.toggleFavorite = toggleFavorite;
+
+// Listing management functions
+window.editListing = function(listingId) {
+    authSystem.showNotification('Edit functionality coming soon!', 'info');
+};
+
+window.deleteListing = function(listingId) {
+    if (confirm('Are you sure you want to delete this listing?')) {
+        // Remove from products array
+        const productIndex = products.findIndex(p => p.id === listingId);
+        if (productIndex !== -1) {
+            products.splice(productIndex, 1);
+        }
+        
+        // Remove from user's listings
+        if (authSystem.currentUser && authSystem.currentUser.listings) {
+            authSystem.currentUser.listings = authSystem.currentUser.listings.filter(l => l.id !== listingId);
+            
+            // Update in users array
+            const userIndex = authSystem.users.findIndex(u => u.id === authSystem.currentUser.id);
+            if (userIndex !== -1) {
+                authSystem.users[userIndex] = authSystem.currentUser;
+                localStorage.setItem('marketplace_users', JSON.stringify(authSystem.users));
+            }
+            localStorage.setItem('marketplace_current_user', JSON.stringify(authSystem.currentUser));
+        }
+        
+        // Refresh displays
+        filterAndRenderProducts();
+        authSystem.loadUserListings();
+        authSystem.showNotification('Listing deleted successfully!', 'success');
+    }
+};
 
 // Initial render
 filterAndRenderProducts();

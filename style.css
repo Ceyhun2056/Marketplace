@@ -1264,5 +1264,339 @@ body.dark-mode .user-dropdown a:hover {
     }
 }
 
+/* User Listings Styles */
+.user-listing {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    margin: 1rem 0;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid var(--border-gray);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
 
+.user-listing img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-right: 1rem;
+}
 
+.listing-info {
+    flex: 1;
+}
+
+.listing-info h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    color: var(--text-dark);
+}
+
+.listing-info .price {
+    font-weight: bold;
+    color: var(--primary-blue);
+    margin: 0 0 0.25rem 0;
+}
+
+.listing-info .status {
+    font-size: 0.9rem;
+    margin: 0;
+    color: var(--text-light);
+}
+
+.listing-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.listing-actions button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+.listing-actions button:first-child {
+    background: var(--primary-blue);
+    color: white;
+}
+
+.listing-actions button:first-child:hover {
+    background: var(--primary-blue-dark);
+}
+
+.listing-actions button:last-child {
+    background: #ef4444;
+    color: white;
+}
+
+.listing-actions button:last-child:hover {
+    background: #dc2626;
+}
+
+/* Order History Styles */
+.order-item {
+    margin: 1rem 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.order-status {
+    background: var(--primary-green);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+
+.order-info {
+    color: var(--text-light);
+    font-size: 0.9em;
+    margin-bottom: 0.5rem;
+}
+
+.order-items ul {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+    color: var(--text-dark);
+}
+
+.order-items li {
+    margin: 0.25rem 0;
+}
+
+/* Modal improvements for order history */
+#orderHistoryModal .modal-content {
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+#orderHistoryContent {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+/* Scrollbar styling */
+#orderHistoryContent::-webkit-scrollbar {
+    width: 6px;
+}
+
+#orderHistoryContent::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+#orderHistoryContent::-webkit-scrollbar-thumb {
+    background: var(--primary-blue);
+    border-radius: 3px;
+}
+
+#orderHistoryContent::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-blue-dark);
+}
+
+/* Settings Modal Styles */
+.settings-modal-content {
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.settings-content {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.settings-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-gray);
+}
+
+.settings-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 1rem;
+}
+
+.settings-section h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-dark);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.setting-item {
+    margin-bottom: 1.5rem;
+}
+
+.setting-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: var(--text-dark);
+    cursor: pointer;
+    margin-bottom: 0.25rem;
+}
+
+.setting-item small {
+    color: var(--text-light);
+    font-size: 0.85rem;
+    display: block;
+    margin-top: 0.25rem;
+    line-height: 1.4;
+}
+
+.setting-item label:not(.setting-label) {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-dark);
+}
+
+.settings-select {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-gray);
+    border-radius: 6px;
+    background: white;
+    color: var(--text-dark);
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+}
+
+.settings-select:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+}
+
+.settings-btn {
+    padding: 0.6rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 0.2s;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.settings-btn.primary {
+    background: var(--primary-blue);
+    color: white;
+}
+
+.settings-btn.primary:hover {
+    background: var(--primary-blue-dark);
+}
+
+.settings-btn.secondary {
+    background: var(--border-gray);
+    color: var(--text-dark);
+}
+
+.settings-btn.secondary:hover {
+    background: #d1d5db;
+}
+
+.settings-btn.danger {
+    background: #ef4444;
+    color: white;
+    margin-bottom: 0.25rem;
+}
+
+.settings-btn.danger:hover {
+    background: #dc2626;
+}
+
+.settings-actions {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-gray);
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+/* Settings checkbox styling */
+.setting-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--primary-blue);
+}
+
+/* Scrollbar styling for settings */
+.settings-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.settings-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.settings-content::-webkit-scrollbar-thumb {
+    background: var(--primary-blue);
+    border-radius: 3px;
+}
+
+.settings-content::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-blue-dark);
+}
+
+/* Responsive settings modal */
+@media (max-width: 768px) {
+    .settings-modal-content {
+        max-width: 95vw;
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+    
+    .settings-actions {
+        justify-content: center;
+    }
+    
+    .settings-btn {
+        margin: 0.25rem;
+        min-width: 120px;
+    }
+}
+
+/* Dark mode support for settings */
+body.dark-mode .settings-modal-content {
+    background: #23272b !important;
+    color: #e3e3e3 !important;
+}
+
+body.dark-mode .settings-select {
+    background: #23272b !important;
+    color: #e3e3e3 !important;
+    border-color: #444 !important;
+}
+
+body.dark-mode .settings-section {
+    border-color: #444 !important;
+}
+
+body.dark-mode .settings-actions {
+    border-color: #444 !important;
+}
