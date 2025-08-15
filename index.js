@@ -766,20 +766,48 @@ class AuthSystem {
     constructor() {
         this.currentUser = null;
         this.users = JSON.parse(localStorage.getItem('marketplace_users') || '[]');
+        this.useCloudStorage = window.appConfig?.useCloudStorage || false;
+        this.cloudStorage = window.cloudStorage;
         this.init();
     }
 
-    init() {
-        // Check if user is already logged in
-        const savedUser = localStorage.getItem('marketplace_current_user');
-        if (savedUser) {
+    async init() {
+        // Try to initialize cloud storage if enabled
+        if (this.useCloudStorage && this.cloudStorage) {
             try {
-                this.currentUser = JSON.parse(savedUser);
-                this.updateUI();
-            } catch (e) {
-                console.error('Error parsing user data:', e);
-                localStorage.removeItem('marketplace_current_user');
-                this.currentUser = null;
+                const initialized = await this.cloudStorage.init();
+                this.useCloudStorage = initialized;
+                
+                // Check if there's an active session
+                if (initialized && this.cloudStorage.auth?.currentUser) {
+                    const userId = this.cloudStorage.auth.currentUser.uid;
+                    const { success, profile } = await this.cloudStorage.getUserProfile(userId);
+                    
+                    if (success) {
+                        this.currentUser = profile;
+                        localStorage.setItem('marketplace_current_user', JSON.stringify(profile));
+                        this.updateUI();
+                    }
+                }
+            } catch (error) {
+                console.error('Cloud storage initialization failed:', error);
+                this.useCloudStorage = false;
+            }
+        }
+        
+        // Fallback to localStorage if cloud storage is disabled or failed
+        if (!this.useCloudStorage) {
+            // Check if user is already logged in
+            const savedUser = localStorage.getItem('marketplace_current_user');
+            if (savedUser) {
+                try {
+                    this.currentUser = JSON.parse(savedUser);
+                    this.updateUI();
+                } catch (e) {
+                    console.error('Error parsing user data:', e);
+                    localStorage.removeItem('marketplace_current_user');
+                    this.currentUser = null;
+                }
             }
         }
 
@@ -907,7 +935,30 @@ class AuthSystem {
         const email = document.getElementById('signInEmail').value;
         const password = document.getElementById('signInPassword').value;
 
-        // Find user
+        // Try cloud storage first if enabled
+        if (this.useCloudStorage && this.cloudStorage) {
+            try {
+                const { success, user, error } = await this.cloudStorage.signIn(email, password);
+                
+                if (success) {
+                    this.currentUser = user;
+                    localStorage.setItem('marketplace_current_user', JSON.stringify(user));
+                    this.updateUI();
+                    this.hideAuthModal();
+                    this.showNotification('Welcome back!', 'success');
+                    return;
+                } else {
+                    this.showNotification(error || 'Invalid email or password', 'error');
+                    // If cloud auth fails, we don't fall back to local auth
+                    return;
+                }
+            } catch (error) {
+                console.error('Cloud sign-in error:', error);
+                // Continue to local authentication if cloud auth fails
+            }
+        }
+        
+        // Local authentication
         const user = this.users.find(u => u.email === email && u.password === password);
         
         if (user) {
@@ -934,10 +985,49 @@ class AuthSystem {
             return;
         }
 
+        // Try cloud storage first if enabled
+        if (this.useCloudStorage && this.cloudStorage) {
+            try {
+                // Prepare user data
+                const userData = {
+                    name,
+                    email,
+                    phone,
+                    avatar: 'media/user.png',
+                    joinDate: new Date().toISOString(),
+                    location: 'Baku',
+                    listings: [],
+                    reviews: [],
+                    rating: 0
+                };
+                
+                const { success, user, error } = await this.cloudStorage.signUp(email, password, userData);
+                
+                if (success) {
+                    this.currentUser = user;
+                    localStorage.setItem('marketplace_current_user', JSON.stringify(user));
+                    this.updateUI();
+                    this.hideAuthModal();
+                    this.showNotification('Account created successfully!', 'success');
+                    return;
+                } else {
+                    this.showNotification(error || 'Failed to create account', 'error');
+                    // If cloud registration fails, we don't fall back to local registration
+                    return;
+                }
+            } catch (error) {
+                console.error('Cloud registration error:', error);
+                // Continue to local registration if cloud registration fails
+            }
+        }
+        
+        // Local registration
         if (this.users.find(u => u.email === email)) {
             this.showNotification('Email already registered', 'error');
             return;
-        }        // Create new user
+        }
+        
+        // Create new user
         const newUser = {
             id: Date.now(),
             name,
@@ -963,7 +1053,20 @@ class AuthSystem {
         this.showNotification('Account created successfully!', 'success');
     }
 
-    logout() {
+    async logout() {
+        // Try cloud storage first if enabled
+        if (this.useCloudStorage && this.cloudStorage) {
+            try {
+                const { success } = await this.cloudStorage.signOut();
+                if (!success) {
+                    console.error('Cloud sign-out failed');
+                }
+            } catch (error) {
+                console.error('Cloud sign-out error:', error);
+            }
+        }
+        
+        // Always clear local data
         this.currentUser = null;
         localStorage.removeItem('marketplace_current_user');
         this.updateUI();
@@ -1028,15 +1131,39 @@ class AuthSystem {
         document.getElementById('memberSince').textContent = new Date(this.currentUser.joinDate).getFullYear();
     }
 
-    updateProfile() {
+    async updateProfile() {
         if (!this.currentUser) return;
 
-        this.currentUser.name = document.getElementById('editName').value;
-        this.currentUser.email = document.getElementById('editEmail').value;
-        this.currentUser.phone = document.getElementById('editPhone').value;
-        this.currentUser.location = document.getElementById('editLocation').value;
+        const updatedData = {
+            name: document.getElementById('editName').value,
+            email: document.getElementById('editEmail').value,
+            phone: document.getElementById('editPhone').value,
+            location: document.getElementById('editLocation').value
+        };
+        
+        // Update current user object
+        this.currentUser.name = updatedData.name;
+        this.currentUser.email = updatedData.email;
+        this.currentUser.phone = updatedData.phone;
+        this.currentUser.location = updatedData.location;
 
-        // Update in users array
+        // Try to update in cloud storage first if enabled
+        if (this.useCloudStorage && this.cloudStorage) {
+            try {
+                const { success, error } = await this.cloudStorage.updateUserProfile(
+                    this.currentUser.id, 
+                    updatedData
+                );
+                
+                if (!success) {
+                    console.error('Cloud profile update failed:', error);
+                }
+            } catch (error) {
+                console.error('Cloud profile update error:', error);
+            }
+        }
+        
+        // Update in local storage
         const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
         if (userIndex !== -1) {
             this.users[userIndex] = this.currentUser;
@@ -1155,7 +1282,7 @@ class AuthSystem {
     }
 
     // Add order to user's order history
-    addOrder(order) {
+    async addOrder(order) {
         if (!this.currentUser) return;
 
         // Initialize orders array if it doesn't exist
@@ -1163,9 +1290,26 @@ class AuthSystem {
             this.currentUser.orders = [];
         }
 
+        // Try to save order to cloud storage first if enabled
+        if (this.useCloudStorage && this.cloudStorage) {
+            try {
+                const { success, orderId, error } = await this.cloudStorage.addOrder(order);
+                
+                if (success) {
+                    // Update order ID from cloud
+                    order.id = orderId;
+                } else {
+                    console.error('Cloud order creation failed:', error);
+                }
+            } catch (error) {
+                console.error('Cloud order creation error:', error);
+            }
+        }
+        
+        // Add to local user object
         this.currentUser.orders.push(order);
 
-        // Update in users array
+        // Update in local users array
         const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
         if (userIndex !== -1) {
             this.users[userIndex] = this.currentUser;
@@ -1176,7 +1320,7 @@ class AuthSystem {
     }
 
     // Add listing to user's listings
-    addListing(product) {
+    async addListing(product) {
         if (!this.currentUser) return;
 
         // Initialize listings array if it doesn't exist
@@ -1194,9 +1338,30 @@ class AuthSystem {
             postedAt: product.postedAt
         };
 
+        // Try to save listing to cloud storage first if enabled
+        if (this.useCloudStorage && this.cloudStorage) {
+            try {
+                const { success, listingId, error } = await this.cloudStorage.addListing({
+                    ...product,
+                    sellerId: this.currentUser.id
+                });
+                
+                if (success) {
+                    // Update listing ID from cloud
+                    listing.id = listingId;
+                    product.id = listingId;
+                } else {
+                    console.error('Cloud listing creation failed:', error);
+                }
+            } catch (error) {
+                console.error('Cloud listing creation error:', error);
+            }
+        }
+        
+        // Add to local user object
         this.currentUser.listings.push(listing);
 
-        // Update in users array
+        // Update in local users array
         const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
         if (userIndex !== -1) {
             this.users[userIndex] = this.currentUser;
@@ -1207,8 +1372,37 @@ class AuthSystem {
     }
 
     // Get user's order history
-    getOrderHistory() {
+    async getOrderHistory() {
         if (!this.currentUser) return [];
+        
+        // Try to get orders from cloud storage first if enabled
+        if (this.useCloudStorage && this.cloudStorage) {
+            try {
+                const { success, orders, error } = await this.cloudStorage.getUserOrders(this.currentUser.id);
+                
+                if (success) {
+                    // Update local cache
+                    this.currentUser.orders = orders;
+                    
+                    // Update in local storage
+                    const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
+                    if (userIndex !== -1) {
+                        this.users[userIndex] = this.currentUser;
+                        localStorage.setItem('marketplace_users', JSON.stringify(this.users));
+                    }
+                    
+                    localStorage.setItem('marketplace_current_user', JSON.stringify(this.currentUser));
+                    
+                    return orders;
+                } else {
+                    console.error('Cloud order fetch failed:', error);
+                }
+            } catch (error) {
+                console.error('Cloud order fetch error:', error);
+            }
+        }
+        
+        // Fall back to local orders
         return this.currentUser.orders || [];
     }
 
@@ -1505,7 +1699,7 @@ class AuthSystem {
         }
     }
 
-    handleAvatarChange(event) {
+    async handleAvatarChange(event) {
         const file = event.target.files[0];
         if (!file) return;
 
@@ -1523,14 +1717,45 @@ class AuthSystem {
 
         // Create FileReader to convert image to base64
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             // Compress image before storing it
-            this.compressImage(e.target.result, (compressedImage) => {
+            this.compressImage(e.target.result, async (compressedImage) => {
                 // Update user avatar
                 if (this.currentUser) {
-                    this.currentUser.avatar = compressedImage;
+                    // Try to upload to cloud storage first if enabled
+                    if (this.useCloudStorage && this.cloudStorage) {
+                        try {
+                            const path = `avatars/${this.currentUser.id}_${Date.now()}.jpg`;
+                            const { success, url, error } = await this.cloudStorage.uploadBase64Image(
+                                compressedImage, 
+                                path
+                            );
+                            
+                            if (success) {
+                                // Use the cloud URL instead of base64
+                                this.currentUser.avatar = url;
+                                
+                                // Update profile in cloud storage
+                                await this.cloudStorage.updateUserProfile(
+                                    this.currentUser.id,
+                                    { avatar: url }
+                                );
+                            } else {
+                                console.error('Cloud avatar upload failed:', error);
+                                // Fall back to local storage of base64
+                                this.currentUser.avatar = compressedImage;
+                            }
+                        } catch (error) {
+                            console.error('Cloud avatar upload error:', error);
+                            // Fall back to local storage of base64
+                            this.currentUser.avatar = compressedImage;
+                        }
+                    } else {
+                        // Local storage only
+                        this.currentUser.avatar = compressedImage;
+                    }
                     
-                    // Update in users array
+                    // Update in local users array
                     const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
                     if (userIndex !== -1) {
                         this.users[userIndex] = this.currentUser;
@@ -1540,8 +1765,8 @@ class AuthSystem {
                     localStorage.setItem('marketplace_current_user', JSON.stringify(this.currentUser));
                     
                     // Update UI
-                    document.getElementById('userAvatar').src = compressedImage;
-                    document.getElementById('profileAvatar').src = compressedImage;
+                    document.getElementById('userAvatar').src = this.currentUser.avatar;
+                    document.getElementById('profileAvatar').src = this.currentUser.avatar;
                     this.updateUI();
                     this.populateProfileForm();
                     this.showNotification('Profile photo updated successfully!', 'success');
